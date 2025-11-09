@@ -1,0 +1,76 @@
+// filepath: /Users/mohammedasrarali/Desktop/audio-translation/.gitignore
+# macOS
+.DS_Store
+
+# Python bytecode/caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# PEP 582 local packages
+__pypackages__/
+
+# Environment and secrets
+.env
+.env.*.local
+
+# Build/dist
+build/
+dist/
+downloads/
+.eggs/
+*.egg-info/
+*.egg
+wheels/
+share/python-wheels/
+MANIFEST
+
+# Packaging/test/artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.cache/
+.mypy_cache/
+.pyre/
+.pytype/
+.hypothesis/
+.ruff_cache/
+.benchmarks/
+
+# Logs
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PyInstaller
+*.spec
+
+# Jupyter
+.ipynb_checkpoints/
+
+# SQLite (if used)
+db.sqlite3
+db.sqlite3-journal
+
+# Docs
+docs/_build/
+site/
+
+# Editors/IDE
+.vscode/
+.idea/
+
+# Python version managers
+.python-version
