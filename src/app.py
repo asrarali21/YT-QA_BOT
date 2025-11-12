@@ -11,6 +11,10 @@ from langchain_core.output_parsers import StrOutputParser
 import os
 from qdrant_client.http.models import Distance , SparseVectorParams , VectorParams
 from dotenv import load_dotenv
+from  langchain_community.retrievers import BM25Retriever  
+from langchain.retrievers import EnsembleRetriever 
+
+print(langchain.__version__)
 
 
 load_dotenv()
@@ -53,37 +57,39 @@ client = QdrantClient(
 
 collection_name = "youtube-vector"
 
-client.create_collection(
-    collection_name=collection_name,
-     vectors_config=VectorParams(
-         size=786 , distance=models.Distance.COSINE,
-     ),
-     sparse_vectors_config={
-         "sparse-vectors" : models.SparseVectorParams(
-             modifier=models.Modifier.IDF
-         )
-     }
+# client.create_collection(
+#     collection_name=collection_name,
+#      vectors_config=VectorParams(
+#          size=768 , distance=models.Distance.COSINE,
+#      ),
+#      sparse_vectors_config={
+#          "sparse" : models.SparseVectorParams(
+#              modifier=models.Modifier.IDF
+#          )
+#      }
 
-)
+# )
 
-sparse_embedding = FastEmbedSparse(model_name="Qdrant/bm25")
+# sparse_embedding = FastEmbedSparse(model_name="Qdrant/bm25")
 
 vectorStore = QdrantVectorStore.from_documents(
     documents=docs_chunks,
     embedding=dense_embedding,
-    sparse_embedding=sparse_embedding,
     collection_name=collection_name,
-    RetrievalMode = RetrievalMode.HYBRID
+    retrieval_mode = RetrievalMode.HYBRID
 )
 
 
 print("✅ Vector store created with hybrid search")
 
 
-retriever = vectorStore.as_retriever(
+dense_retriever = vectorStore.as_retriever(
     search_type="similarity",
     search_kwargs={"k": 3}
 )
+bm25_ret = BM25Retriever.from_documents(docs_chunks)
+bm25_ret.k = 6
+hybrid_ret = EnsembleRetriever(retrievers=[dense_ret, bm25_ret], weights=[0.6, 0.4])
 
 
 template = """Answer the question based on the following context from a YouTube video:
@@ -96,12 +102,12 @@ Question: {question}
 Answer:"""
 
 
-prompt = ChatPromptTemplate.from_messages(template) 
+prompt = ChatPromptTemplate.from_template(template) 
 
 
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-pro",
+    model="gemini-2.5-flash",
    google_api_key=GOOGLE_APIKEY,
    temperature=0
 )
@@ -109,7 +115,7 @@ llm = ChatGoogleGenerativeAI(
 rag_chain = (
     {
         "context" : retriever ,
-        "question" : RunnablePassthrough
+        "question" : RunnablePassthrough()
     }
     |prompt
     |llm
