@@ -1,21 +1,14 @@
 from langchain_community.document_loaders import YoutubeLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings 
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_qdrant import  FastEmbedSparse , QdrantVectorStore , RetrievalMode
-from qdrant_client import QdrantClient , models
-from langchain_qdrant import Qdrant
+from qdrant_client import QdrantClient , models 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 import os
-from qdrant_client.http.models import Distance , SparseVectorParams , VectorParams
 from dotenv import load_dotenv
-from  langchain_community.retrievers import BM25Retriever  
-from langchain.retrievers import EnsembleRetriever 
-
-print(langchain.__version__)
-
+from langchain_groq import ChatGroq
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 
 load_dotenv()
 
@@ -24,6 +17,7 @@ GOOGLE_APIKEY=os.getenv("GOOGLE_API_KEY")
 
 
 loader = YoutubeLoader.from_youtube_url(
+
     "https://www.youtube.com/watch?v=xg0hNUWVIgQ",
      
 )
@@ -44,11 +38,20 @@ docs_chunks =  split_docs.split_documents(docs_text)
 print(len(docs_chunks))
 
 
+HF_TOKEN=os.getenv("HF_TOKEN")
 
-dense_embedding = GoogleGenerativeAIEmbeddings(
-    model="models/embedding-001",
-    google_api_key=GOOGLE_APIKEY
+
+dense_embedding = HuggingFaceEndpointEmbeddings(
+    provider="hf-inference",
+  huggingfacehub_api_token=HF_TOKEN,
+  model="BAAI/bge-large-en-v1.5"
 )
+print("✅ Dense embeddings initialized")
+
+
+sparse_embedding = FastEmbedSparse(model_name="Qdrant/bm25")
+print("✅ Sparse embeddings initialized")
+
 
 
 client = QdrantClient(
@@ -57,39 +60,27 @@ client = QdrantClient(
 
 collection_name = "youtube-vector"
 
-# client.create_collection(
-#     collection_name=collection_name,
-#      vectors_config=VectorParams(
-#          size=768 , distance=models.Distance.COSINE,
-#      ),
-#      sparse_vectors_config={
-#          "sparse" : models.SparseVectorParams(
-#              modifier=models.Modifier.IDF
-#          )
-#      }
 
-# )
-
-# sparse_embedding = FastEmbedSparse(model_name="Qdrant/bm25")
+print("\n🏗️ Creating vector store with hybrid search...")
 
 vectorStore = QdrantVectorStore.from_documents(
     documents=docs_chunks,
     embedding=dense_embedding,
     collection_name=collection_name,
+    sparse_embedding=sparse_embedding,
     retrieval_mode = RetrievalMode.HYBRID
 )
+
 
 
 print("✅ Vector store created with hybrid search")
 
 
-dense_retriever = vectorStore.as_retriever(
+retriever = vectorStore.as_retriever(
     search_type="similarity",
     search_kwargs={"k": 3}
 )
-bm25_ret = BM25Retriever.from_documents(docs_chunks)
-bm25_ret.k = 6
-hybrid_ret = EnsembleRetriever(retrievers=[dense_ret, bm25_ret], weights=[0.6, 0.4])
+
 
 
 template = """Answer the question based on the following context from a YouTube video:
@@ -104,17 +95,24 @@ Answer:"""
 
 prompt = ChatPromptTemplate.from_template(template) 
 
+GROQ_APIKEY=os.getenv("GROQ_API_KEY")
+
+print("✅ API keys loaded")
+
+def format_docs(docs):
+    """Combine all retrieved documents into a single string"""
+    return "\n\n".join(doc.page_content for doc in docs)
 
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-   google_api_key=GOOGLE_APIKEY,
-   temperature=0
+
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+   api_key=GROQ_APIKEY
 )
 
 rag_chain = (
     {
-        "context" : retriever ,
+        "context" : retriever | format_docs,
         "question" : RunnablePassthrough()
     }
     |prompt
@@ -123,7 +121,7 @@ rag_chain = (
 )
 
 
-question = "What is the main topic discussed in this video?"
+question = "what exactly the person is talking about core ai and applied ai"
 print(f"\n❓ Question: {question}")
 print(f"\n💬 Answer: {rag_chain.invoke(question)}")
 
