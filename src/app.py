@@ -124,18 +124,3 @@ rag_chain = (
 question = "what exactly the person is talking about core ai and applied ai"
 print(f"\n❓ Question: {question}")
 print(f"\n💬 Answer: {rag_chain.invoke(question)}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
