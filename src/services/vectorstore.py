@@ -17,7 +17,7 @@ def spilt_docs_youtube(docs_text):
 def get_qdrant_client():
     return QdrantClient("localhost", port=6333)
 
-@lru_cache
+@lru_cache()
 def create_youtube_vector_store(url , collection_name = "youtube-vector"):
     docs = load_youtube_video(url)
     chunks = spilt_docs_youtube(docs)

@@ -6,7 +6,7 @@ from langchain_qdrant import FastEmbedSparse
 
 HF_TOKEN=os.getenv("HF_TOKEN")
 
-@lru_cache
+@lru_cache()
 def get_dense_embedding():
     _dense =  HuggingFaceEndpointEmbeddings(
     provider="hf-inference",

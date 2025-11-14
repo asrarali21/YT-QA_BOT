@@ -6,3 +6,5 @@ def get_retriever():
     search_type="similarity",
     search_kwargs={"k": 3}
 )
+    return retriever
+    
